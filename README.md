@@ -38,7 +38,7 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/autodoc.git
+git clone https://github.com/smearr/autodoc.git
 cd autodoc
 
 # Install dependencies
