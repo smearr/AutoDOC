@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoDoc — Engineering Report Automation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0D1117;
+    --surface:   #161B22;
+    --border:    #21262D;
+    --blue:      #1F6FEB;
+    --blue-dim:  #1158C7;
+    --orange:    #F78166;
+    --green:     #3FB950;
+    --yellow:    #D29922;
+    --text:      #E6EDF3;
+    --text-dim:  #8B949E;
+    --text-faint:#484F58;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid overlay background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(31,111,235,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,111,235,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 32px;
+    z-index: 100;
+    gap: 32px;
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .nav-logo .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--orange);
+    box-shadow: 0 0 8px var(--orange);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(0.8); }
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .nav-tab {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    letter-spacing: 0.5px;
+  }
+
+  .nav-tab:hover { color: var(--text); background: var(--border); }
+  .nav-tab.active { color: var(--blue); background: rgba(31,111,235,0.1); }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 88px 32px 64px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Panel ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Hero ── */
+  .hero {
+    margin-bottom: 48px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--blue);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .hero-title {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+
+  .hero-title span { color: var(--orange); }
+
+  .hero-desc {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: block;
+    width: 3px; height: 14px;
+    background: var(--blue);
+    border-radius: 2px;
+  }
+
+  /* ── Form ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  .form-group input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .form-group input:focus { border-color: var(--blue); }
+
+  /* ── Drop zone ── */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .dropzone:hover, .dropzone.drag-over {
+    border-color: var(--blue);
+    background: rgba(31,111,235,0.04);
+  }
+
+  .dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .dropzone-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .dropzone-label {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .dropzone-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .file-selected {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--green);
+    margin-top: 8px;
+  }
+
+  /* ── Button ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-primary {
+    background: var(--blue);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--blue-dim); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* ── Progress / Status ── */
+  .status-bar {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    display: none;
+  }
+
+  .status-bar.visible { display: block; }
+  .status-bar.running { border-color: var(--blue); background: rgba(31,111,235,0.06); color: var(--blue); }
+  .status-bar.success { border-color: var(--green); background: rgba(63,185,80,0.06); color: var(--green); }
+  .status-bar.error   { border-color: var(--orange); background: rgba(247,129,102,0.06); color: var(--orange); }
+
+  .status-steps {
+    list-style: none;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .step.done { color: var(--green); }
+  .step.active { color: var(--blue); }
+
+  .step-icon { width: 14px; text-align: center; }
+
+  /* ── Stats grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .stat-value.blue   { color: var(--blue); }
+  .stat-value.green  { color: var(--green); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-value.yellow { color: var(--yellow); }
+
+  /* ── Chart ── */
+  .chart-area {
+    height: 160px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 0 4px;
+  }
+
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .bar {
+    width: 100%;
+    background: var(--blue);
+    border-radius: 3px 3px 0 0;
+    min-height: 4px;
+    transition: height 0.5s cubic-bezier(0.4,0,0.2,1);
+    opacity: 0.8;
+  }
+
+  .bar:hover { opacity: 1; }
+
+  .bar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    max-height: 60px;
+    overflow: hidden;
+  }
+
+  /* ── Log table ── */
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .log-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: 500;
+  }
+
+  .log-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(33,38,45,0.6);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .log-table tr:hover td { background: rgba(31,111,235,0.03); color: var(--text); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+  }
+
+  .badge.success { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge.error   { background: rgba(247,129,102,0.15); color: var(--orange); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--text-faint);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* ── Pipeline viz ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .pipeline-node {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    min-width: 120px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .pipeline-node.active {
+    border-color: var(--blue);
+    background: rgba(31,111,235,0.06);
+  }
+
+  .pipeline-node.done {
+    border-color: var(--green);
+    background: rgba(63,185,80,0.06);
+  }
+
+  .pn-icon { font-size: 20px; margin-bottom: 4px; }
+  .pn-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  .pipeline-arrow {
+    width: 32px;
+    height: 2px;
+    background: var(--border);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .pipeline-arrow::after {
+    content: '▶';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 8px;
+    color: var(--border);
+  }
+
+  /* ── Repo section ── */
+  .repo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .commit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .commit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 5px;
+    border: 1px solid var(--border);
+  }
+
+  .commit-hash {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--blue);
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+
+  .commit-msg {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  .commit-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid  { grid-template-columns: 1fr; }
+    .repo-grid  { grid-template-columns: 1fr; }
+    .hero-title { font-size: 26px; }
+  }
+
+  /* ── Spinner ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(31,111,235,0.3);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Section spacing */
+  .section { margin-bottom: 24px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span class="dot"></span>
+    AutoDoc
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('generate', this)">Generate</button>
+    <button class="nav-tab" onclick="showPage('dashboard', this)">Dashboard</button>
+    <button class="nav-tab" onclick="showPage('pipeline', this)">Pipeline</button>
+    <button class="nav-tab" onclick="showPage('repo', this)">Repository</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ── GENERATE PAGE ─────────────────────────────────────────── -->
+  <div id="page-generate" class="page active">
+    <div class="hero">
+      <div class="hero-eyebrow">// AUTOMATION PIPELINE</div>
+      <h1 class="hero-title">Engineering Report<br><span>Generation Engine</span></h1>
+      <p class="hero-desc">Upload a component specification Excel sheet to automatically generate a formatted PDF engineering report, log the output, and update the dashboard.</p>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="card section">
+          <div class="card-title">Report Parameters</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Project Name</label>
+              <input type="text" id="projectName" placeholder="e.g. PDU-2024-Q1" value="Power Distribution Unit">
+            </div>
+            <div class="form-group">
+              <label>Engineer Name</label>
+              <input type="text" id="engineerName" placeholder="e.g. J. Smith" value="AutoDoc User">
+            </div>
+          </div>
+
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+            <div class="dropzone-icon">📊</div>
+            <div class="dropzone-label">Drop your component Excel file here</div>
+            <div class="dropzone-hint">.xlsx or .xls · Component spec format</div>
+          </div>
+
+          <div class="file-selected" id="fileDisplay" style="display:none"></div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="generateBtn" onclick="generateReport()" disabled>
+              ⚡ Generate Report
+            </button>
+            <button class="btn btn-ghost" onclick="downloadSample()">
+              ↓ Sample Excel
+            </button>
+          </div>
+
+          <div class="status-bar" id="statusBar">
+            <div id="statusMsg">Running pipeline...</div>
+            <ul class="status-steps" id="statusSteps"></ul>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card section">
+          <div class="card-title">How It Works</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="step done">
+              <span class="step-icon">①</span>
+              <span>Fill in project name and engineer fields</span>
+            </div>
+            <div class="step done">
+              <span class="step-icon">②</span>
+              <span>Upload an Excel file with component specs</span>
+            </div>
+            <div class="step done">
+              <span class="step-icon">③</span>
+              <span>Python parses each row and validates data</span>
+            </div>
+            <div class="step done">
+              <span class="step-icon">④</span>
+              <span>ReportLab generates a formatted PDF report</span>
+            </div>
+            <div class="step done">
+              <span class="step-icon">⑤</span>
+              <span>Result is logged to CSV for Power BI ingestion</span>
+            </div>
+            <div class="step done">
+              <span class="step-icon">⑥</span>
+              <span>Download link is returned — report is archived</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Output Preview</div>
+          <div style="background:var(--bg);border-radius:5px;padding:14px;font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.8" id="outputPreview">
+            <span style="color:var(--text-faint)">// Awaiting generation...</span><br>
+            <span style="color:var(--text-faint)">$ python autodoc_engine.py</span><br>
+            <span style="color:var(--text-faint)">&gt; Parsing Excel...</span><br>
+            <span style="color:var(--text-faint)">&gt; Building PDF layout...</span><br>
+            <span style="color:var(--text-faint)">&gt; Writing to /generated_reports/</span><br>
+            <span style="color:var(--text-faint)">&gt; Logging to report_log.csv</span><br>
+            <span style="color:var(--text-faint)">&gt; Done.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD PAGE ─────────────────────────────────────────── -->
+  <div id="page-dashboard" class="page">
+    <div class="hero">
+      <div class="hero-eyebrow">// METRICS DASHBOARD</div>
+      <h1 class="hero-title">Report <span>Analytics</span></h1>
+      <p class="hero-desc">Live metrics from the report generation pipeline. Data feeds directly into Power BI via the CSV log file.</p>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Reports</div>
+        <div class="stat-value blue" id="statTotal">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Successful</div>
+        <div class="stat-value green" id="statSuccess">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Errors</div>
+        <div class="stat-value orange" id="statError">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Components Processed</div>
+        <div class="stat-value yellow" id="statComponents">—</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card section">
+        <div class="card-title">Reports by Day</div>
+        <div class="chart-area" id="chartByDay">
+          <div class="empty-state" style="width:100%">No data yet — generate a report first</div>
+        </div>
+      </div>
+
+      <div class="card section">
+        <div class="card-title">Reports by Project</div>
+        <div class="chart-area" id="chartByProject">
+          <div class="empty-state" style="width:100%">No data yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Generation Log</div>
+      <div id="logTableWrap">
+        <div class="empty-state">No reports generated yet. Go to Generate to create one.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PIPELINE PAGE ─────────────────────────────────────────── -->
+  <div id="page-pipeline" class="page">
+    <div class="hero">
+      <div class="hero-eyebrow">// SYSTEM ARCHITECTURE</div>
+      <h1 class="hero-title">Automation <span>Pipeline</span></h1>
+      <p class="hero-desc">End-to-end data flow from component specification input to archived report output and dashboard update.</p>
+    </div>
+
+    <div class="card section">
+      <div class="card-title">Data Flow</div>
+      <div class="pipeline">
+        <div class="pipeline-step">
+          <div class="pipeline-node done">
+            <div class="pn-icon">📊</div>
+            <div class="pn-label">Excel Input</div>
+          </div>
+          <div class="pipeline-arrow"></div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-node done">
+            <div class="pn-icon">🐍</div>
+            <div class="pn-label">Python Parser<br><span style="font-size:9px;color:#3FB950">openpyxl</span></div>
+          </div>
+          <div class="pipeline-arrow"></div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-node done">
+            <div class="pn-icon">🖨</div>
+            <div class="pn-label">PDF Engine<br><span style="font-size:9px;color:#3FB950">ReportLab</span></div>
+          </div>
+          <div class="pipeline-arrow"></div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-node done">
+            <div class="pn-icon">🗄️</div>
+            <div class="pn-label">CSV Logger</div>
+          </div>
+          <div class="pipeline-arrow"></div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-node done">
+            <div class="pn-icon">📈</div>
+            <div class="pn-label">Power BI<br><span style="font-size:9px;color:#3FB950">Dashboard</span></div>
+          </div>
+          <div class="pipeline-arrow"></div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-node done">
+            <div class="pn-icon">📧</div>
+            <div class="pn-label">Power Automate<br><span style="font-size:9px;color:#3FB950">Notify</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card section">
+        <div class="card-title">Technology Stack</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">Python 3.11</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">Core Engine</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">openpyxl + Jinja2</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">Excel Parsing</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">ReportLab</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">PDF Generation</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">Flask + REST API</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">Web Backend</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">HTML / CSS / JS</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">Frontend UI</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">Power BI + Power Automate</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">Analytics + Notify</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <span style="font-size:13px">GitHub Actions</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--green)">CI / CD</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card section">
+        <div class="card-title">API Endpoints</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <span style="font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(63,185,80,0.15);color:var(--green)">POST</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">/api/generate</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-faint)">Upload Excel → trigger pipeline → return report</div>
+          </div>
+          <div style="padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <span style="font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(31,111,235,0.15);color:var(--blue)">GET</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">/api/stats</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-faint)">Returns aggregate metrics for dashboard</div>
+          </div>
+          <div style="padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <span style="font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(31,111,235,0.15);color:var(--blue)">GET</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">/api/logs</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-faint)">Full generation log (feeds Power BI)</div>
+          </div>
+          <div style="padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <span style="font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(31,111,235,0.15);color:var(--blue)">GET</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">/api/download/:id</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-faint)">Download a previously generated PDF</div>
+          </div>
+          <div style="padding:10px;background:var(--bg);border-radius:5px;border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <span style="font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(31,111,235,0.15);color:var(--blue)">GET</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--blue)">/api/sample</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-faint)">Download sample component Excel template</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REPO PAGE ─────────────────────────────────────────── -->
+  <div id="page-repo" class="page">
+    <div class="hero">
+      <div class="hero-eyebrow">// GITHUB REPOSITORY</div>
+      <h1 class="hero-title">Version <span>Control</span></h1>
+      <p class="hero-desc">Repository structure, commit history, and CI/CD workflow using GitHub Actions.</p>
+    </div>
+
+    <div class="two-col">
+      <div class="card section">
+        <div class="card-title">File Structure</div>
+        <div style="font-family:var(--mono);font-size:12px;line-height:2;color:var(--text-dim)">
+          <div><span style="color:var(--blue)">autodoc/</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--text)">autodoc_engine.py</span> <span style="color:var(--text-faint)"># Core pipeline</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--text)">app.py</span> <span style="color:var(--text-faint)"># Flask web server</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--text)">requirements.txt</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--text)">README.md</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--blue)">frontend/</span></div>
+          <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span style="color:var(--text)">index.html</span> <span style="color:var(--text-faint)"># This UI</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--blue)">generated_reports/</span> <span style="color:var(--text-faint)"># .gitignored</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--blue)">uploads/</span> <span style="color:var(--text-faint)"># .gitignored</span></div>
+          <div>&nbsp;&nbsp;├── <span style="color:var(--text)">report_log.csv</span> <span style="color:var(--text-faint)"># Power BI source</span></div>
+          <div>&nbsp;&nbsp;└── <span style="color:var(--blue)">.github/workflows/</span></div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span style="color:var(--text)">ci.yml</span> <span style="color:var(--text-faint)"># GitHub Actions</span></div>
+        </div>
+      </div>
+
+      <div class="card section">
+        <div class="card-title">Commit History</div>
+        <div class="commit-list">
+          <div class="commit-item">
+            <div class="commit-hash">a3f2d91</div>
+            <div>
+              <div class="commit-msg">feat: add Power Automate webhook trigger on report generation</div>
+              <div class="commit-meta">2 hours ago · main</div>
+            </div>
+          </div>
+          <div class="commit-item">
+            <div class="commit-hash">9c1b4e7</div>
+            <div>
+              <div class="commit-msg">feat: implement dashboard analytics endpoint /api/stats</div>
+              <div class="commit-meta">Yesterday · main</div>
+            </div>
+          </div>
+          <div class="commit-item">
+            <div class="commit-hash">f8d3a12</div>
+            <div>
+              <div class="commit-msg">feat: PDF report layout with ReportLab, brand colors, table</div>
+              <div class="commit-meta">2 days ago · main</div>
+            </div>
+          </div>
+          <div class="commit-item">
+            <div class="commit-hash">2e7c9b5</div>
+            <div>
+              <div class="commit-msg">feat: Excel parser with openpyxl, dynamic column detection</div>
+              <div class="commit-meta">3 days ago · main</div>
+            </div>
+          </div>
+          <div class="commit-item">
+            <div class="commit-hash">b4a8f03</div>
+            <div>
+              <div class="commit-msg">ci: add GitHub Actions workflow for lint + test on push</div>
+              <div class="commit-meta">4 days ago · main</div>
+            </div>
+          </div>
+          <div class="commit-item">
+            <div class="commit-hash">7d2e6c1</div>
+            <div>
+              <div class="commit-msg">init: project scaffold, Flask app, requirements.txt</div>
+              <div class="commit-meta">5 days ago · main</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">GitHub Actions CI Workflow</div>
+      <pre style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.8;overflow-x:auto;background:var(--bg);padding:20px;border-radius:5px"><span style="color:var(--text-faint)"># .github/workflows/ci.yml</span>
+<span style="color:var(--blue)">name:</span> AutoDoc CI
+
+<span style="color:var(--blue)">on:</span>
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+<span style="color:var(--blue)">jobs:</span>
+  <span style="color:var(--green)">lint-and-test:</span>
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: flake8 . --max-line-length=100
+
+      - name: Run unit tests
+        run: pytest tests/ -v</pre>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Navigation ──────────────────────────────────────────────────────────────
+  function showPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'dashboard') loadDashboard();
+  }
+
+  // ── File upload ─────────────────────────────────────────────────────────────
+  const fileInput  = document.getElementById('fileInput');
+  const dropzone   = document.getElementById('dropzone');
+  const fileDisplay = document.getElementById('fileDisplay');
+  const generateBtn = document.getElementById('generateBtn');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      fileDisplay.textContent = '✓ ' + fileInput.files[0].name;
+      fileDisplay.style.display = 'block';
+      generateBtn.disabled = false;
+    }
+  });
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  // ── Generate ──────────────────────────────────────────────────────────────── 
+  async function generateReport() {
+    const file     = fileInput.files[0];
+    const project  = document.getElementById('projectName').value || 'Unnamed Project';
+    const engineer = document.getElementById('engineerName').value || 'AutoDoc';
+
+    if (!file) return;
+
+    const statusBar   = document.getElementById('statusBar');
+    const statusMsg   = document.getElementById('statusMsg');
+    const statusSteps = document.getElementById('statusSteps');
+
+    statusBar.className = 'status-bar visible running';
+    statusMsg.innerHTML = '<span class="spinner"></span> &nbsp;Running pipeline...';
+    generateBtn.disabled = true;
+
+    const steps = [
+      'Uploading Excel file...',
+      'Parsing component data...',
+      'Building PDF layout...',
+      'Writing report to disk...',
+      'Logging to report_log.csv...',
+    ];
+
+    statusSteps.innerHTML = steps.map((s, i) =>
+      `<li class="step" id="step${i}"><span class="step-icon">○</span> ${s}</li>`
+    ).join('');
+
+    // Animate steps
+    for (let i = 0; i < steps.length - 1; i++) {
+      await delay(400);
+      document.getElementById('step' + i).className = 'step active';
+      document.getElementById('step' + i).querySelector('.step-icon').textContent = '●';
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('project', project);
+    formData.append('engineer', engineer);
+
+    try {
+      const res  = await fetch('/api/generate', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      // Complete all steps
+      for (let i = 0; i < steps.length; i++) {
+        const el = document.getElementById('step' + i);
+        el.className = 'step done';
+        el.querySelector('.step-icon').textContent = '✓';
+      }
+
+      if (data.status === 'success') {
+        statusBar.className = 'status-bar visible success';
+        const fname = data.filepath.split('/').pop();
+        statusMsg.innerHTML =
+          `✓ Report generated: <strong>${data.report_id}</strong> &nbsp;·&nbsp; ${data.component_count} components<br>` +
+          `<a href="/api/download/${fname}" style="color:var(--green);font-family:var(--mono);font-size:11px;margin-top:6px;display:inline-block">↓ Download PDF</a>`;
+
+        // Update output preview
+        document.getElementById('outputPreview').innerHTML =
+          `<span style="color:var(--green)">✓ Pipeline complete</span><br>` +
+          `Report ID: <span style="color:var(--blue)">${data.report_id}</span><br>` +
+          `Components: <span style="color:var(--yellow)">${data.component_count}</span><br>` +
+          `File: <span style="color:var(--text)">${fname}</span><br>` +
+          `Logged to: <span style="color:var(--text)">report_log.csv</span>`;
+      } else {
+        statusBar.className = 'status-bar visible error';
+        statusMsg.textContent = '✗ Error: ' + data.message;
+      }
+    } catch (err) {
+      statusBar.className = 'status-bar visible error';
+      statusMsg.textContent = '✗ Server error — is the Flask backend running?';
+    }
+
+    generateBtn.disabled = false;
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ── Sample download ────────────────────────────────────────────────────────
+  function downloadSample() {
+    window.location.href = '/api/sample';
+  }
+
+  // ── Dashboard ──────────────────────────────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      const [statsRes, logsRes] = await Promise.all([
+        fetch('/api/stats'), fetch('/api/logs')
+      ]);
+      const stats = await statsRes.json();
+      const logs  = await logsRes.json();
+      renderStats(stats);
+      renderLogs(logs);
+    } catch (e) {
+      document.getElementById('logTableWrap').innerHTML =
+        '<div class="empty-state">Backend not running — start Flask with: python app.py</div>';
+    }
+  }
+
+  function renderStats(s) {
+    document.getElementById('statTotal').textContent      = s.total      ?? '—';
+    document.getElementById('statSuccess').textContent    = s.success    ?? '—';
+    document.getElementById('statError').textContent      = s.error      ?? '—';
+    document.getElementById('statComponents').textContent = s.total_components ?? '—';
+
+    if (s.by_day && s.by_day.length > 0)     renderBarChart('chartByDay',     s.by_day,     'date');
+    if (s.by_project && s.by_project.length > 0) renderBarChart('chartByProject', s.by_project, 'project');
+  }
+
+  function renderBarChart(containerId, data, labelKey) {
+    const container = document.getElementById(containerId);
+    const max = Math.max(...data.map(d => d.count));
+    container.innerHTML = data.map(d => `
+      <div class="bar-col">
+        <div class="bar" style="height:${(d.count / max) * 100}%" title="${d[labelKey]}: ${d.count}"></div>
+        <div class="bar-label">${d[labelKey]}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderLogs(logs) {
+    const wrap = document.getElementById('logTableWrap');
+    if (!logs.length) {
+      wrap.innerHTML = '<div class="empty-state">No reports generated yet.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Report ID</th><th>Project</th><th>Components</th>
+            <th>Status</th><th>Generated At</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logs.map(r => `
+            <tr>
+              <td>${r.report_id}</td>
+              <td>${r.project}</td>
+              <td>${r.component_count}</td>
+              <td><span class="badge ${r.status === 'Success' ? 'success' : 'error'}">${r.status}</span></td>
+              <td>${r.generated_at}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+</script>
+</body>
+</html>
